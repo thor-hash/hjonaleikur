@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="is">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Kostir Hjónabands</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #1a1a2e;
+    color: #fff;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  h1 {
+    font-size: 1.6rem;
+    text-align: center;
+    margin: 20px 10px 5px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #ff6b6b, #ffd93d, #6bcb77, #4d96ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 15px;
+    text-align: center;
+  }
+
+  .score-bar {
+    display: flex;
+    justify-content: space-around;
+    width: 100%;
+    max-width: 400px;
+    margin-bottom: 10px;
+    padding: 0 10px;
+  }
+
+  .score-item {
+    text-align: center;
+    font-size: 0.75rem;
+    color: #aaa;
+  }
+
+  .score-item .val {
+    font-size: 1.3rem;
+    font-weight: bold;
+    color: #fff;
+  }
+
+  .wheel-container {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 10px auto;
+  }
+
+  canvas {
+    width: 300px;
+    height: 300px;
+    filter: drop-shadow(0 0 20px rgba(255,255,255,0.1));
+  }
+
+  .pointer {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 18px solid transparent;
+    border-right: 18px solid transparent;
+    border-top: 30px solid #ffd93d;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5));
+    z-index: 10;
+  }
+
+  .legend {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    width: 90%;
+    max-width: 360px;
+    margin: 15px auto;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255,255,255,0.05);
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    border: 2px solid transparent;
+    transition: all 0.3s;
+  }
+
+  .legend-item.highlight {
+    border-color: #ffd93d;
+    background: rgba(255,215,61,0.15);
+    transform: scale(1.05);
+  }
+
+  .legend-dot {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .spin-btn {
+    margin: 15px auto;
+    padding: 16px 50px;
+    font-size: 1.2rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #6bcb77, #4d96ff);
+    color: #fff;
+    cursor: pointer;
+    letter-spacing: 1px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  .spin-btn:active {
+    transform: scale(0.95);
+  }
+
+  .spin-btn:disabled {
+    opacity: 0.4;
+    transform: none;
+  }
+
+  .result-box {
+    width: 90%;
+    max-width: 360px;
+    min-height: 80px;
+    margin: 10px auto 20px;
+    padding: 15px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 15px;
+    text-align: center;
+    font-size: 1rem;
+    line-height: 1.5;
+    transition: all 0.3s;
+  }
+
+  .result-box.reveal {
+    background: rgba(255,215,61,0.1);
+    border: 1px solid rgba(255,215,61,0.3);
+  }
+
+  .result-label {
+    font-size: 0.75rem;
+    color: #888;
+    margin-bottom: 5px;
+  }
+
+  .result-text {
+    font-size: 1.1rem;
+    font-weight: bold;
+  }
+
+  .result-comment {
+    font-size: 0.9rem;
+    color: #ccc;
+    margin-top: 8px;
+    font-style: italic;
+  }
+
+  .stats-row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 5px auto 10px;
+    width: 90%;
+    max-width: 360px;
+  }
+
+  .stat-badge {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.08);
+  }
+
+  .ending-screen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.92);
+    z-index: 100;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 30px;
+    text-align: center;
+  }
+
+  .ending-screen.show {
+    display: flex;
+  }
+
+  .ending-screen h2 {
+    font-size: 1.8rem;
+    margin-bottom: 10px;
+    background: linear-gradient(135deg, #ff6b6b, #ffd93d);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .ending-screen p {
+    font-size: 1rem;
+    color: #ccc;
+    margin: 8px 0;
+    max-width: 320px;
+    line-height: 1.5;
+  }
+
+  .ending-screen .final-stats {
+    margin: 20px 0;
+    font-size: 0.9rem;
+    color: #aaa;
+  }
+
+  .ending-screen button {
+    margin-top: 20px;
+    padding: 14px 40px;
+    font-size: 1.1rem;
+    font-weight: bold;
+    border: none;
+    border-radius: 50px;
+    background: linear-gradient(135deg, #ff6b6b, #ffd93d);
+    color: #1a1a2e;
+    cursor: pointer;
+  }
+
+  .confetti {
+    position: fixed;
+    pointer-events: none;
+    z-index: 101;
+  }
+</style>
+</head>
+<body>
+
+<h1>Kostir Hjónabands</h1>
+<p class="subtitle">Snúðu hjólinu og uppgötvaðu sannleikann</p>
+
+<div class="score-bar">
+  <div class="score-item">
+    <div class="val" id="spinCount">0</div>
+    <div>Snúningar</div>
+  </div>
+  <div class="score-item">
+    <div class="val" id="matchCount">0</div>
+    <div>Rétt</div>
+  </div>
+  <div class="score-item">
+    <div class="val" id="accuracy">0%</div>
+    <div>Nákvæmni</div>
+  </div>
+  <div class="score-item">
+    <div class="val" id="roundDisplay">1/10</div>
+    <div>Umferð</div>
+  </div>
+</div>
+
+<div class="wheel-container">
+  <div class="pointer"></div>
+  <canvas id="wheel" width="600" height="600"></canvas>
+</div>
+
+<div class="legend" id="legend"></div>
+
+<div class="stats-row" id="statsRow"></div>
+
+<button class="spin-btn" id="spinBtn">SNÚA!</button>
+
+<div class="result-box" id="resultBox">
+  <div class="result-label">Smelltu á SNÚA til að byrja!</div>
+  <div class="result-text" id="resultText"></div>
+  <div class="result-comment" id="resultComment"></div>
+</div>
+
+<div class="ending-screen" id="endScreen">
+  <h2 id="endTitle"></h2>
+  <p id="endText"></p>
+  <div class="final-stats" id="finalStats"></div>
+  <p id="endMoral"></p>
+  <button onclick="restartGame()">Spila aftur</button>
+</div>
+
+<script>
+const canvas = document.getElementById('wheel');
+const ctx = canvas.getContext('2d');
+const W = 600, H = 600, R = 260;
+
+// The ACTUAL pie chart colors (deliberately wrong like the meme)
+const sliceColors = ['#4dff4d', '#ff8c00', '#cc66ff', '#4dff4d'];
+const sliceAngles = [0.35, 0.30, 0.15, 0.20]; // proportions
+
+// Legend items with their "correct" colors that DON'T match the pie
+const categories = [
+  { name: 'Tilfinningalegur stöðugleiki', legendColor: '#ff3333', icon: '❤️' },
+  { name: 'Peningar', legendColor: '#3366ff', icon: '💰' },
+  { name: 'Hamingja', legendColor: '#ffdd33', icon: '😊' },
+  { name: 'Kynlíf', legendColor: '#cc9966', icon: '🔥' }
+];
+
+// Funny comments when landing on each category
+const comments = {
+  'Tilfinningalegur stöðugleiki': [
+    'Stöðugleiki? Þú meinar þegar maki þinn segir "allt í lagi" og allt er EKKI í lagi?',
+    'Jááá... stöðugleikinn í að vita nákvæmlega hvað fer úrskeiðis í kvöld.',
+    'Tilfinningalega stöðugt... stöðugt í stress.',
+    'Stöðugleiki = vita að þú átt ALLTAF einhvern til að rífast við.',
+    'Eins stöðugt og WIFI-ið heima.',
+    'Þú veist hvað þú færð. Vandamálið er að þú veist hvað þú færð.',
+  ],
+  'Peningar': [
+    'Tvær tekjur! Og þrefalt fleiri útgjöld!',
+    'Peningar? Þú meinar sameiginlegan bankareikning þar sem þú þarft að útskýra hvert smákaup?',
+    'Já, þú sparar peninga... á brúðkaupsgjöfum til annarra.',
+    'Auðlegð hjónabands: "Ég hélt að ÞÚ greiddir reikninginn!"',
+    'Skattalegir kostir! Sem fara allir í IKEA húsgögn.',
+    'Meira fé = meiri rifrildi um féð.',
+  ],
+  'Hamingja': [
+    'Hamingjan er hlutfallsleg... miðað við hvað?',
+    'Hamingjuleg hjón eru eins og einhyrningar — allir tala um þau en enginn sér þau.',
+    'Auðvitað ertu hamingjusamur! Þú mátt ekki vera annað.',
+    'Hamingja = fá sofið á aðal rúminu í nótt.',
+    'Hamingjan er þegar makinn þinn fer í ferðalag... og þú ert heima.',
+    'Skilgreining á hamingju: Netflix og ENGINN talar.',
+  ],
+  'Kynlíf': [
+    'Ha? Liturinn passar ekki? Kynlífið heldur ekki eftir hjónaband...',
+    '...sagði enginn eftir 5 ár í hjónabandi.',
+    'Kynlíf? Var það ekki á dögunum fyrir börnin?',
+    'Rauðu litirnir í skýringunni eru eins rauðir og kynlíf hjóna... ósýnilegt.',
+    'Kynlíf eftir hjónaband: hugmyndin er betri en framkvæmdin.',
+    'Skrifað á lista: "kynlíf" — rétt á eftir "þrífa bílskúr".',
+  ]
+};
+
+// Result when colors don't match
+const mismatchComments = [
+  '⚠️ LITIRNIR PASSA EKKI! Alveg eins og í hjónabandi...',
+  '🤔 Bíddu... þetta er ekki rétti liturinn. Akkúrat.',
+  '😂 Vitið þið hvað? Í hjónabandi passar EKKERT saman.',
+  '🎨 Rangur litur, rétt reynsla.',
+  '💀 Liturinn lýgur. Hjónabandið lýgur. Allt lýgur.',
+  '🙃 Ef litirnir pössuðu væri þetta ekki hjónaband.',
+];
+
+let currentAngle = 0;
+let spinning = false;
+let spins = 0;
+let matches = 0;
+const maxRounds = 10;
+let results = [];
+
+function drawWheel(rotation) {
+  ctx.clearRect(0, 0, W, H);
+  ctx.save();
+  ctx.translate(W/2, H/2);
+  ctx.rotate(rotation);
+
+  let startAngle = 0;
+  for (let i = 0; i < sliceAngles.length; i++) {
+    const sweep = sliceAngles[i] * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, R, startAngle, startAngle + sweep);
+    ctx.closePath();
+    ctx.fillStyle = sliceColors[i];
+    ctx.fill();
+    ctx.strokeStyle = '#1a1a2e';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Draw category name + icon on slice
+    const midAngle = startAngle + sweep / 2;
+    const textR = R * 0.6;
+    ctx.save();
+    ctx.translate(Math.cos(midAngle) * textR, Math.sin(midAngle) * textR);
+    ctx.rotate(midAngle + Math.PI/2);
+    ctx.fillStyle = '#000';
+    ctx.font = 'bold 22px -apple-system, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(categories[i].icon, 0, -5);
+    ctx.font = 'bold 14px -apple-system, sans-serif';
+    // Split long names
+    const words = categories[i].name.split(' ');
+    if (words.length > 1) {
+      ctx.fillText(words[0], 0, 14);
+      ctx.fillText(words.slice(1).join(' '), 0, 30);
+    } else {
+      ctx.fillText(categories[i].name, 0, 14);
+    }
+    ctx.restore();
+
+    startAngle += sweep;
+  }
+
+  // Center circle
+  ctx.beginPath();
+  ctx.arc(0, 0, 35, 0, Math.PI * 2);
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fill();
+  ctx.strokeStyle = '#ffd93d';
+  ctx.lineWidth = 3;
+  ctx.stroke();
+  ctx.fillStyle = '#ffd93d';
+  ctx.font = 'bold 18px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('💍', 0, 0);
+
+  ctx.restore();
+}
+
+function buildLegend() {
+  const el = document.getElementById('legend');
+  el.innerHTML = '';
+  categories.forEach((cat, i) => {
+    const item = document.createElement('div');
+    item.className = 'legend-item';
+    item.id = `legend-${i}`;
+    item.innerHTML = `<div class="legend-dot" style="background:${cat.legendColor}"></div><span>${cat.icon} ${cat.name}</span>`;
+    el.appendChild(item);
+  });
+}
+
+function getSliceAtAngle(angle) {
+  // Normalize angle: pointer is at top (3π/2 from standard position)
+  let pointerAngle = (Math.PI * 2.5 - angle) % (Math.PI * 2);
+  if (pointerAngle < 0) pointerAngle += Math.PI * 2;
+
+  let cumulative = 0;
+  for (let i = 0; i < sliceAngles.length; i++) {
+    cumulative += sliceAngles[i] * Math.PI * 2;
+    if (pointerAngle < cumulative) return i;
+  }
+  return 0;
+}
+
+function spin() {
+  if (spinning || spins >= maxRounds) return;
+  spinning = true;
+  spins++;
+
+  document.getElementById('spinBtn').disabled = true;
+  document.getElementById('resultBox').classList.remove('reveal');
+  document.getElementById('resultText').textContent = '';
+  document.getElementById('resultComment').textContent = '';
+  document.getElementById('resultBox').querySelector('.result-label').textContent = 'Hjólið snýst...';
+
+  // Clear legend highlights
+  categories.forEach((_, i) => document.getElementById(`legend-${i}`).classList.remove('highlight'));
+
+  const spinAmount = Math.PI * (6 + Math.random() * 8); // 3-4 full rotations
+  const targetAngle = currentAngle + spinAmount;
+  const duration = 3000 + Math.random() * 1500;
+  const startTime = performance.now();
+  const startAngle = currentAngle;
+
+  function easeOut(t) {
+    return 1 - Math.pow(1 - t, 3);
+  }
+
+  function animate(now) {
+    const elapsed = now - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+    const eased = easeOut(progress);
+    currentAngle = startAngle + spinAmount * eased;
+
+    drawWheel(currentAngle);
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    } else {
+      currentAngle = targetAngle % (Math.PI * 2);
+      onSpinComplete();
+    }
+  }
+
+  requestAnimationFrame(animate);
+}
+
+function onSpinComplete() {
+  spinning = false;
+  const sliceIndex = getSliceAtAngle(currentAngle);
+  const cat = categories[sliceIndex];
+  const sliceColor = sliceColors[sliceIndex];
+  const legendColor = cat.legendColor;
+  const isMatch = sliceColor.toLowerCase() === legendColor.toLowerCase();
+
+  if (isMatch) matches++;
+  results.push({ category: cat.name, matched: isMatch });
+
+  // Highlight legend item
+  document.getElementById(`legend-${sliceIndex}`).classList.add('highlight');
+
+  // Show result
+  const box = document.getElementById('resultBox');
+  box.classList.add('reveal');
+
+  const commentList = comments[cat.name];
+  const comment = commentList[Math.floor(Math.random() * commentList.length)];
+  const mismatch = mismatchComments[Math.floor(Math.random() * mismatchComments.length)];
+
+  box.querySelector('.result-label').textContent = `Hjólið stoppaði á:`;
+  document.getElementById('resultText').textContent = `${cat.icon} ${cat.name}`;
+  document.getElementById('resultComment').innerHTML =
+    (isMatch ? '✅ Ómögulegt! Litirnir pössuðu!! (Lottó á morgun?)' : mismatch) +
+    `<br><br>${comment}`;
+
+  // Update scores
+  document.getElementById('spinCount').textContent = spins;
+  document.getElementById('matchCount').textContent = matches;
+  document.getElementById('accuracy').textContent = Math.round((matches / spins) * 100) + '%';
+  document.getElementById('roundDisplay').textContent = `${Math.min(spins + 1, maxRounds)}/${maxRounds}`;
+
+  // Update stats
+  updateStats();
+
+  if (spins >= maxRounds) {
+    document.getElementById('spinBtn').textContent = 'NIÐURSTÖÐUR';
+    document.getElementById('spinBtn').disabled = false;
+    document.getElementById('spinBtn').onclick = showEnding;
+  } else {
+    document.getElementById('spinBtn').disabled = false;
+  }
+}
+
+function updateStats() {
+  const row = document.getElementById('statsRow');
+  const counts = {};
+  categories.forEach(c => counts[c.name] = 0);
+  results.forEach(r => counts[r.category]++);
+
+  row.innerHTML = '';
+  categories.forEach(cat => {
+    if (counts[cat.name] > 0) {
+      const badge = document.createElement('span');
+      badge.className = 'stat-badge';
+      badge.textContent = `${cat.icon} ×${counts[cat.name]}`;
+      row.appendChild(badge);
+    }
+  });
+}
+
+function showEnding() {
+  const screen = document.getElementById('endScreen');
+  screen.classList.add('show');
+
+  const pct = Math.round((matches / maxRounds) * 100);
+
+  let title, text, moral;
+  if (pct === 0) {
+    title = '💍 Fullkomið hjónaband!';
+    text = `${matches} af ${maxRounds} litir pössuðu. Ekkert passar saman — alveg eins og í alvöru hjónabandi!`;
+    moral = 'Siðferðilega lexían: Hjónaband er þegar þú hættir að leita að fullkomnu samræmi og byrjar að elska glundroðann.';
+  } else if (pct < 30) {
+    title = '😅 Næstum rétt!';
+    text = `${matches} af ${maxRounds} litir pössuðu. Þú fékkst smá samræmi... sem er meira en flest hjón fá.`;
+    moral = 'Siðferðilega lexían: Stundum passar lífið saman. Þetta er tilviljun.';
+  } else {
+    title = '🦄 Einhyrningur!';
+    text = `${matches} af ${maxRounds} litir pössuðu?! Ertu viss um að þú sért gift/ur?!`;
+    moral = 'Siðferðilega lexían: Þetta er tölfræðilega ómögulegt. Hringdu í lottó.';
+  }
+
+  document.getElementById('endTitle').textContent = title;
+  document.getElementById('endText').textContent = text;
+  document.getElementById('endMoral').textContent = moral;
+
+  // Category breakdown
+  const counts = {};
+  categories.forEach(c => counts[c.name] = 0);
+  results.forEach(r => counts[r.category]++);
+
+  let statsHTML = '<strong>Niðurstöður:</strong><br>';
+  categories.forEach(cat => {
+    statsHTML += `${cat.icon} ${cat.name}: ${counts[cat.name]}x<br>`;
+  });
+  statsHTML += `<br>Litur passaði: ${matches}/${maxRounds} (${pct}%)`;
+  document.getElementById('finalStats').innerHTML = statsHTML;
+
+  spawnConfetti();
+}
+
+function restartGame() {
+  spins = 0;
+  matches = 0;
+  results = [];
+  currentAngle = 0;
+
+  document.getElementById('endScreen').classList.remove('show');
+  document.getElementById('spinBtn').textContent = 'SNÚA!';
+  document.getElementById('spinBtn').onclick = spin;
+  document.getElementById('spinBtn').disabled = false;
+  document.getElementById('spinCount').textContent = '0';
+  document.getElementById('matchCount').textContent = '0';
+  document.getElementById('accuracy').textContent = '0%';
+  document.getElementById('roundDisplay').textContent = '1/10';
+  document.getElementById('statsRow').innerHTML = '';
+  document.getElementById('resultBox').classList.remove('reveal');
+  document.getElementById('resultBox').querySelector('.result-label').textContent = 'Smelltu á SNÚA til að byrja!';
+  document.getElementById('resultText').textContent = '';
+  document.getElementById('resultComment').textContent = '';
+  categories.forEach((_, i) => document.getElementById(`legend-${i}`).classList.remove('highlight'));
+
+  drawWheel(0);
+}
+
+function spawnConfetti() {
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.className = 'confetti';
+    el.style.left = Math.random() * 100 + 'vw';
+    el.style.top = '-20px';
+    el.style.width = '10px';
+    el.style.height = '10px';
+    el.style.borderRadius = Math.random() > 0.5 ? '50%' : '0';
+    el.style.background = ['#ff3333','#3366ff','#ffdd33','#cc9966','#4dff4d','#ff8c00','#cc66ff'][Math.floor(Math.random()*7)];
+    el.style.opacity = 0.8;
+    document.body.appendChild(el);
+
+    const duration = 2000 + Math.random() * 2000;
+    const xDrift = (Math.random() - 0.5) * 200;
+
+    el.animate([
+      { transform: `translate(0, 0) rotate(0deg)`, opacity: 1 },
+      { transform: `translate(${xDrift}px, ${window.innerHeight + 50}px) rotate(${Math.random()*720}deg)`, opacity: 0 }
+    ], { duration, easing: 'ease-in' }).onfinish = () => el.remove();
+  }
+}
+
+// Init
+buildLegend();
+drawWheel(0);
+document.getElementById('spinBtn').onclick = spin;
+</script>
+</body>
+</html>
